@@ -41,3 +41,16 @@ footer nav { display: flex; gap: 13px; } footer nav button { border: 0; padding:
 .legal-modal { position: relative; width: min(620px, 100%); border: 1px solid var(--border); border-radius: 12px; padding: 30px; background: #fff; box-shadow: 0 24px 70px rgba(15,23,42,.25); }
 .legal-modal h2 { margin: 10px 0 16px; font-size: 28px; }.legal-modal p { color: var(--steel); font-size: 13px; line-height: 1.8; }.legal-modal .legal-note { border-top: 1px solid var(--border); padding-top: 14px; color: #64748B; font: 10px var(--mono); }.legal-close { position: absolute; right: 14px; top: 14px; border: 0; color: var(--steel); background: transparent; padding: 6px; }.legal-close:hover { color: var(--navy); background: #F1F5F9; border-radius: 6px; }
 @media (max-width: 600px) { footer nav { flex-wrap: wrap; gap: 8px 13px; } .loading-card { padding: 25px 18px 21px; } }
+
+.paste-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0 18px; color: #94A3B8; font: 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+.paste-divider::before, .paste-divider::after { content: ''; height: 1px; flex: 1; background: var(--border); }
+.paste-form { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: #F8FAFC; }
+.paste-heading, .paste-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.paste-label { margin: 0; color: var(--ink); font-weight: 600; }
+.paste-actions { display: flex; align-items: center; gap: 8px; }
+.secondary-button, .clear-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; border-radius: 7px; padding: 7px 10px; font-size: 11px; white-space: nowrap; }
+.secondary-button { color: var(--navy); background: #EFF6FF; border: 1px solid #BFDBFE; }.secondary-button:hover { background: #DBEAFE; border-color: #93C5FD; }
+.clear-button { color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; }.clear-button:hover { background: #FEF3C7; }
+.fasta-textarea { display: block; width: 100%; min-height: 168px; resize: vertical; margin: 11px 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: 7px; outline: none; color: var(--ink); background: #fff; font: 12px/1.65 var(--mono); tab-size: 2; }.fasta-textarea::placeholder { color: #94A3B8; opacity: 1; }.fasta-textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13,148,136,.12); }
+.paste-help { display: inline-flex; align-items: center; gap: 6px; color: var(--steel); font-size: 10px; }.paste-help svg { color: var(--teal); }.paste-help code { color: var(--navy); font-size: 11px; }.inline-validation { color: #991B1B; background: #FEF2F2; border: 1px solid #FECACA; padding: 8px 10px; border-radius: 6px; margin-top: 11px; font-size: 11px; }
+@media (max-width: 600px) { .paste-form { padding: 12px; }.paste-heading, .paste-footer { align-items: stretch; flex-direction: column; }.paste-actions { width: 100%; justify-content: space-between; }.secondary-button { flex: 1; }.paste-footer .primary-button { width: 100%; }.fasta-textarea { min-height: 190px; font-size: 11px; } }
