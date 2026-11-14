@@ -39,7 +39,7 @@ export default function IngestionPanel({ onAnalyze, loading, error }) {
     if (!trimmed.startsWith('>')) return setPasteError('FASTA text must begin with a header starting with ">".')
     setPasteError('')
     const file = new File([trimmed], 'pasted_batch.fasta', { type: 'text/plain' })
-    onAnalyze({ type: 'upload', files: [file], region_label: regionLabel })
+    onAnalyze({ type: 'upload', files: [file], region_label: regionLabel, awakening: true })
   }
   const acceptFiles = (selected) => setFiles(Array.from(selected).filter((file) => /\.(fasta|fa|seq|txt)$/i.test(file.name)))
   const loadDemo = () => { setPastedText(demoFasta); setPasteError('') }
