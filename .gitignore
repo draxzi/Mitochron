@@ -1,0 +1,41 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime-generated scientific reference cache
+backend/data/NC_012920.fasta
+
+# JavaScript / Vite
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Logs and local artifacts
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Editors and local platform metadata
+.vscode/
+.idea/
+.manus/
+
+# OS/runtime files
+.cache/
