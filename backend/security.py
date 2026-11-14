@@ -93,7 +93,7 @@ def sanitized_filename(filename: str | None) -> str:
     return name
 
 
-def validate_fasta_bytes(content: bytes) -> None:
+def validate_fasta_bytes(content: bytes, validate_sequences: bool = True) -> None:
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Uploaded file exceeds the 5 MB limit")
     if b"\x00" in content:
@@ -102,6 +102,7 @@ def validate_fasta_bytes(content: bytes) -> None:
         text = content.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=400, detail="FASTA must be valid UTF-8 text") from exc
-    sequence_lines = [line.strip().replace(" ", "").upper() for line in text.splitlines() if line.strip() and not line.lstrip().startswith(">")]
-    if not sequence_lines or any(not set(line) <= VALID_IUPAC for line in sequence_lines):
-        raise HTTPException(status_code=400, detail="FASTA contains invalid IUPAC nucleotide characters")
+    if validate_sequences:
+        sequence_lines = [line.strip().replace(" ", "").upper() for line in text.splitlines() if line.strip() and not line.lstrip().startswith(">")]
+        if not sequence_lines or any(not set(line) <= VALID_IUPAC for line in sequence_lines):
+            raise HTTPException(status_code=400, detail="FASTA contains invalid IUPAC nucleotide characters")

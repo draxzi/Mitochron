@@ -26,6 +26,8 @@ def main():
         response = client.post("/api/analyze/upload", files={"files": ("samples.fasta", io.BytesIO(fasta), "text/plain")}, data={"region_label": "Unknown"})
         assert response.status_code == 200, response.text
         result = response.json(); assert result["summary"]["total_specimens"] == 5
+        assert result["aggregate_metrics"] == result["summary"]
+        assert len(result["specimen_variants"]) == 5 and result["error_logs"] == []
         freq = {x["base_change"]: x["frequency_pct"] for x in result["summary"]["frequencies"]}
         assert freq["310T>C"] == 80.0 and freq["16223C>T"] == 60.0 and freq["16519T>C"] == 60.0 and freq["415A>W"] == 20.0
         assert any(v["is_anomaly"] for v in result["variants"] if v["base_change"] == "415A>W")
@@ -37,6 +39,10 @@ def main():
         assert client.post("/api/chat", json={"session_id": sid, "message": "Explain anomalies"}).status_code == 403
         assert client.post("/api/chat", headers={"X-Session-Token": token}, json={"session_id": sid, "message": "Explain anomalies"}).status_code == 200
         assert client.post("/api/chat", json={"message": "What is a mitochondrial haplogroup?"}).status_code == 200
+        partial = client.post("/api/analyze/upload", files={"files": ("partial.fasta", io.BytesIO(b">valid\n" + make_sequence({310: "C"}).encode() + b"\n>bad_sample\nATGX\n"), "text/plain")}, data={"region_label": "Unknown"})
+        assert partial.status_code == 200, partial.text
+        partial_result = partial.json(); assert partial_result["summary"]["total_specimens"] == 1
+        assert partial_result["error_logs"] and partial_result["error_logs"][0]["specimen_id"] == "bad_sample"
         with patch("backend.main.fetch_ncbi", return_value=[{"specimen_id": "mock_ncbi_1", "region": "NW", "title": "Mock NCBI record", "sequence": make_sequence({310: "C"})}]):
             ncbi = client.post("/api/analyze/ncbi", json={"query": "Homo sapiens mitochondrion complete genome India", "max_samples": 15, "region_label": "Unknown"})
             assert ncbi.status_code == 200 and ncbi.json()["summary"]["total_specimens"] == 1

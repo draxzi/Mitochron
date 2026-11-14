@@ -154,3 +154,8 @@ These links document the external resources used or relevant to the implementati
 ## Licensing
 
 No license is asserted in this repository because authorship and licensing authority were not provided. Review [`LICENSE-RECOMMENDATION.md`](LICENSE-RECOMMENDATION.md) before adding a license.
+
+
+### Large FASTA batches
+
+The backend parallelizes per-specimen variant calls for multi-record FASTA uploads and returns aggregate metrics, per-specimen variant arrays, and explicit `error_logs` for records that fail validation. Render deployment uses Gunicorn with a 120-second timeout; `ANALYSIS_WORKERS` can tune the bounded process pool.

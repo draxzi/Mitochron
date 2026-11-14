@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
@@ -14,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .ai_copilot import ask_groq
 from .analytics import clustering, summarize
 from .exporter import csv_report, excel_report
-from .ingestion import fetch_ncbi, parse_fasta
+from .ingestion import fetch_ncbi, parse_fasta_detailed
 from .reference_manager import ensure_reference, reference_loaded
 from .security import SlidingWindowLimiter, cleanup_sessions, create_session, require_session, sanitized_filename, validate_fasta_bytes
 from .variant_caller import call_variants
@@ -87,15 +88,46 @@ def _public_session(session: dict) -> dict:
     return {key: value for key, value in session.items() if key != "created_at_epoch"}
 
 
-def _run(specimens: list[dict]) -> dict:
+def _call_variants_job(specimen: dict, reference: str) -> list[dict]:
+    return call_variants(specimen, reference)
+
+
+def _parallel_variants(specimens: list[dict], reference: str) -> tuple[list[dict], list[dict]]:
+    variants_by_specimen: dict[str, list[dict]] = {specimen["specimen_id"]: [] for specimen in specimens}
+    errors: list[dict] = []
+    if not specimens:
+        return [], errors
+    configured_workers = int(os.getenv("ANALYSIS_WORKERS", "4"))
+    workers = min(len(specimens), max(1, configured_workers), max(1, os.cpu_count() or 1))
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_call_variants_job, specimen, reference): specimen for specimen in specimens}
+        for future in as_completed(futures):
+            specimen = futures[future]
+            specimen_id = specimen["specimen_id"]
+            try:
+                variants_by_specimen[specimen_id] = future.result()
+            except Exception as exc:
+                errors.append({"source": "variant_caller", "record_index": None, "specimen_id": specimen_id, "error": f"Variant analysis failed: {exc}"})
+    flattened = [variant for specimen in specimens for variant in variants_by_specimen[specimen["specimen_id"]]]
+    return flattened, errors
+
+
+def _run(specimens: list[dict], error_logs: list[dict] | None = None) -> dict:
     if REFERENCE is None:
         raise HTTPException(503, "Reference genome is not loaded")
-    variants = [variant for specimen in specimens for variant in call_variants(specimen, str(REFERENCE.seq))]
+    variants, variant_errors = _parallel_variants(specimens, str(REFERENCE.seq))
+    all_errors = [*(error_logs or []), *variant_errors]
+    variant_groups = {specimen["specimen_id"]: [] for specimen in specimens}
+    for variant in variants:
+        variant_groups.setdefault(variant["specimen_id"], []).append(variant)
     result = {
         "specimens": [{key: value for key, value in specimen.items() if key != "sequence"} for specimen in specimens],
         "variants": variants,
+        "specimen_variants": [{"specimen_id": specimen["specimen_id"], "variants": variant_groups.get(specimen["specimen_id"], [])} for specimen in specimens],
+        "error_logs": all_errors,
     }
     result["summary"] = summarize(specimens, variants)
+    result["aggregate_metrics"] = result["summary"]
     result["clustering"] = clustering(specimens, variants)
     create_session(result, SESSIONS)
     return _public_session(result)
@@ -134,23 +166,26 @@ def analyze_ncbi(request: NcbiRequest):
 @app.post("/api/analyze/upload")
 async def analyze_upload(files: Annotated[list[UploadFile], File(...)], region_label: Annotated[str, Form()] = "Unknown"):
     specimens = []
+    error_logs: list[dict] = []
     if len(region_label) > 32:
         raise HTTPException(422, "region_label is too long")
     try:
         for upload in files:
             sanitized_filename(upload.filename)
             content = await upload.read(5 * 1024 * 1024 + 1)
-            validate_fasta_bytes(content)
+            validate_fasta_bytes(content, validate_sequences=False)
             remaining = 100 - len(specimens)
             if remaining <= 0:
                 raise HTTPException(400, "A maximum of 100 FASTA records is allowed per request")
-            parsed = parse_fasta(content, region_label if region_label != "Unknown" else None)
+            parsed, parse_errors = parse_fasta_detailed(content, region_label if region_label != "Unknown" else None, upload.filename or "upload")
+            error_logs.extend(parse_errors)
             specimens.extend(parsed[:remaining])
             if len(parsed) > remaining:
                 raise HTTPException(400, "A maximum of 100 FASTA records is allowed per request")
         if not specimens:
-            raise HTTPException(400, "No FASTA records were found")
-        return _run(specimens)
+            detail = {"message": "No valid FASTA records were found", "errors": error_logs}
+            raise HTTPException(400, detail)
+        return _run(specimens, error_logs)
     except HTTPException:
         raise
     except Exception as exc:

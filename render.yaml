@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: mitochron
+    env: python
+    rootDir: .
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn backend.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --graceful-timeout 30
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"

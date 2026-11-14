@@ -24,14 +24,38 @@ def _specimen(record, region_label: str | None = None) -> dict:
     return {"specimen_id": str(record.id), "region": region_label or infer_region(f"{record.id} {record.description}"), "title": str(record.description), "sequence": sequence}
 
 
+def parse_fasta_detailed(content: bytes, region_label: str | None = None, source_name: str = "upload") -> tuple[list[dict], list[dict]]:
+    """Parse every FASTA record independently so one bad record does not discard a batch."""
+    try:
+        handle = io.StringIO(content.decode("utf-8-sig"))
+    except UnicodeDecodeError as exc:
+        return [], [{"source": source_name, "record_index": None, "specimen_id": None, "error": f"FASTA is not valid UTF-8: {exc}"}]
+
+    specimens: list[dict] = []
+    errors: list[dict] = []
+    try:
+        iterator = SeqIO.parse(handle, "fasta")
+        for record_index, record in enumerate(iterator, start=1):
+            try:
+                specimens.append(_specimen(record, region_label))
+            except Exception as exc:
+                errors.append({"source": source_name, "record_index": record_index, "specimen_id": str(getattr(record, "id", "unknown")), "error": str(exc)})
+    except Exception as exc:
+        errors.append({"source": source_name, "record_index": None, "specimen_id": None, "error": f"FASTA parser error: {exc}"})
+
+    if not specimens and not errors:
+        errors.append({"source": source_name, "record_index": None, "specimen_id": None, "error": "No FASTA records were found"})
+    if len(specimens) > MAX_FASTA_RECORDS:
+        errors.append({"source": source_name, "record_index": None, "specimen_id": None, "error": f"A maximum of {MAX_FASTA_RECORDS} FASTA records is allowed per upload"})
+        specimens = specimens[:MAX_FASTA_RECORDS]
+    return specimens, errors
+
+
 def parse_fasta(content: bytes, region_label: str | None = None) -> list[dict]:
-    handle = io.StringIO(content.decode("utf-8-sig"))
-    records = list(SeqIO.parse(handle, "fasta"))
-    if not records:
-        raise ValueError("No FASTA records were found")
-    if len(records) > MAX_FASTA_RECORDS:
-        raise ValueError(f"A maximum of {MAX_FASTA_RECORDS} FASTA records is allowed per upload")
-    return [_specimen(record, region_label) for record in records]
+    specimens, errors = parse_fasta_detailed(content, region_label)
+    if errors:
+        raise ValueError(errors[0]["error"])
+    return specimens
 
 
 def fetch_ncbi(query: str, max_samples: int = 20, region_label: str | None = None) -> list[dict]:
