@@ -25,7 +25,7 @@ def _specimen(record, region_label: str | None = None) -> dict:
 
 
 def parse_fasta(content: bytes, region_label: str | None = None) -> list[dict]:
-    handle = io.StringIO(content.decode("utf-8"))
+    handle = io.StringIO(content.decode("utf-8-sig"))
     records = list(SeqIO.parse(handle, "fasta"))
     if not records:
         raise ValueError("No FASTA records were found")
@@ -35,14 +35,16 @@ def parse_fasta(content: bytes, region_label: str | None = None) -> list[dict]:
 
 
 def fetch_ncbi(query: str, max_samples: int = 20, region_label: str | None = None) -> list[dict]:
-    if not query.strip():
+    normalized_query = " ".join(query.split())
+    if not normalized_query:
         raise ValueError("NCBI query cannot be empty")
     max_samples = max(15, min(int(max_samples), 100))
     email = os.getenv("NCBI_EMAIL")
     if not email:
         raise RuntimeError("NCBI_EMAIL is required for NCBI ingestion")
     Entrez.email = email
-    with Entrez.esearch(db="nuccore", term=query, retmax=max_samples, rettype="fasta") as handle:
+    Entrez.tool = "MITOCHRON"
+    with Entrez.esearch(db="nuccore", term=normalized_query, retmax=max_samples, retmode="xml") as handle:
         ids = Entrez.read(handle).get("IdList", [])
     if not ids:
         return []

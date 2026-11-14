@@ -28,7 +28,7 @@ LIMITER = SlidingWindowLimiter()
 
 def _origins() -> list[str]:
     configured = [item.strip() for item in os.getenv("ALLOWED_ORIGINS", "").split(",") if item.strip()]
-    return sorted(set(["http://localhost:5173", "http://localhost:3000", *configured]))
+    return sorted(set(["https://mitochronai.vercel.app", "https://mitochron-bmfik38gm-draxzi16.vercel.app", "http://localhost:5173", "http://localhost:3000", *configured]))
 
 
 @asynccontextmanager
@@ -41,6 +41,11 @@ async def lifespan(app: FastAPI):
 production = os.getenv("ENV", "development").lower() == "production"
 app = FastAPI(title="Forensic mtDNA & SNP Analysis API", version="1.1.0", lifespan=lifespan, docs_url=None if production else "/docs", redoc_url=None if production else "/redoc")
 app.add_middleware(CORSMiddleware, allow_origins=_origins(), allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "X-Session-Token"], allow_credentials=False)
+
+
+@app.get("/")
+def root_health():
+    return {"status": "online", "service": "MITOCHRON Bio-Forensic API"}
 
 
 @app.middleware("http")
@@ -74,7 +79,7 @@ class NcbiRequest(StrictModel):
 
 
 class ChatRequest(StrictModel):
-    session_id: str = Field(min_length=1, max_length=64)
+    session_id: str | None = Field(default=None, max_length=64)
     message: str = Field(min_length=1, max_length=1000)
 
 
@@ -94,6 +99,18 @@ def _run(specimens: list[dict]) -> dict:
     result["clustering"] = clustering(specimens, variants)
     create_session(result, SESSIONS)
     return _public_session(result)
+
+
+def _ai_context(session: dict | None) -> dict:
+    if not session:
+        return {"session_loaded": False, "note": "No active dataset is loaded; answer only general bio-forensic questions."}
+    return {
+        "session_loaded": True,
+        "summary": session.get("summary", {}),
+        "specimens": session.get("specimens", [])[:100],
+        "variants": session.get("variants", [])[:250],
+        "clustering": session.get("clustering", {}),
+    }
 
 
 @app.get("/api/health")
@@ -156,9 +173,9 @@ def export_csv(session_id: str, session: dict = Depends(get_session)):
 
 @app.post("/api/chat")
 def chat(request: ChatRequest, x_session_token: str | None = Header(default=None, alias="X-Session-Token")):
-    session = require_session(request.session_id, SESSIONS, x_session_token)
+    session = require_session(request.session_id, SESSIONS, x_session_token) if request.session_id else None
     try:
-        return {"session_id": request.session_id, "response": ask_groq(request.message, session["summary"])}
+        return {"session_id": request.session_id, "response": ask_groq(request.message, _ai_context(session))}
     except Exception as exc:
         raise HTTPException(502, f"Groq request failed: {exc}")
 

@@ -22,3 +22,22 @@ footer { max-width: 1340px; margin: auto; padding: 0 clamp(20px, 5vw, 76px) 30px
 @media (max-width: 1100px) { .helix-hero { right: 170px; width: 280px; } }
 @media (max-width: 900px) { .helix-hero { right: 0; opacity: .35; width: 300px; } .hero-copy { max-width: 100%; } }
 @media (max-width: 600px) { .helix-hero { position: relative; right: auto; top: auto; width: 100%; height: 190px; margin: -12px 0 18px; opacity: .75; } .hero { display: block; } }
+
+.loading-window { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgba(248,250,252,.82); backdrop-filter: blur(7px); }
+.loading-card { width: min(430px, 100%); text-align: center; border: 1px solid #BFDBFE; border-radius: 16px; padding: 30px 26px 25px; background: rgba(255,255,255,.97); box-shadow: 0 20px 60px rgba(30,58,138,.18); }
+.loading-card .eyebrow { display: inline-flex; align-items: center; gap: 7px; }
+.loading-card h2 { margin: 16px 0 8px; font-size: 25px; }
+.loading-card p { color: var(--steel); margin: 0 0 18px; font-size: 12px; }
+.loading-card small { color: #64748B; display: inline-flex; align-items: center; gap: 6px; font: 10px var(--mono); }
+.loading-helix { position: relative; width: 120px; height: 92px; margin: 0 auto 20px; transform: rotate(-9deg); }
+.loading-helix span { position: absolute; left: 12px; right: 12px; top: calc(var(--i) * 10px); height: 18px; animation: helix-wave 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -0.12s); }
+.loading-helix i, .loading-helix b { position: absolute; width: 10px; height: 10px; border-radius: 50%; top: 4px; box-shadow: 0 0 12px currentColor; }
+.loading-helix i { left: calc(50% - 31px); color: var(--navy); background: currentColor; }
+.loading-helix b { right: calc(50% - 31px); color: var(--teal); background: currentColor; }
+.loading-helix span::after { content: ''; position: absolute; left: 22px; right: 22px; top: 8px; height: 2px; background: var(--amber); opacity: .75; }
+@keyframes helix-wave { 0%, 100% { transform: translateX(-10px) scale(.85); opacity: .55; } 50% { transform: translateX(10px) scale(1.08); opacity: 1; } }
+footer nav { display: flex; gap: 13px; } footer nav button { border: 0; padding: 0; color: var(--steel); background: transparent; font: 10px var(--mono); } footer nav button:hover { color: var(--navy); }
+.legal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(15,23,42,.36); backdrop-filter: blur(4px); }
+.legal-modal { position: relative; width: min(620px, 100%); border: 1px solid var(--border); border-radius: 12px; padding: 30px; background: #fff; box-shadow: 0 24px 70px rgba(15,23,42,.25); }
+.legal-modal h2 { margin: 10px 0 16px; font-size: 28px; }.legal-modal p { color: var(--steel); font-size: 13px; line-height: 1.8; }.legal-modal .legal-note { border-top: 1px solid var(--border); padding-top: 14px; color: #64748B; font: 10px var(--mono); }.legal-close { position: absolute; right: 14px; top: 14px; border: 0; color: var(--steel); background: transparent; padding: 6px; }.legal-close:hover { color: var(--navy); background: #F1F5F9; border-radius: 6px; }
+@media (max-width: 600px) { footer nav { flex-wrap: wrap; gap: 8px 13px; } .loading-card { padding: 25px 18px 21px; } }

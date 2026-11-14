@@ -15,4 +15,4 @@ It uses slate/zinc surfaces, crimson as the signature evidence-review color, amb
 - `src/AIChatDrawer.jsx`: persistent session-aware chat drawer.
 - `src/styles.css`: responsive visual system.
 
-The app uses the existing FastAPI endpoints at `http://localhost:8000/api`, native fetch, Recharts, Lucide React, and Tailwind/PostCSS.
+The app uses the existing FastAPI endpoints at `the configured VITE_API_URL origin`, native fetch, Recharts, Lucide React, and Tailwind/PostCSS.

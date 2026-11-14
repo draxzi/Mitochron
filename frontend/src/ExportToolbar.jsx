@@ -2,7 +2,7 @@ import { Download, FileSpreadsheet, FileText, FileType2 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API = (import.meta.env.VITE_API_URL || 'https://mitochron.onrender.com').replace(/\/+$/, '')
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)

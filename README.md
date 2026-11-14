@@ -103,7 +103,7 @@ Start the frontend in a second terminal:
 npm --prefix frontend run dev
 ```
 
-The development dashboard defaults to `http://localhost:5173` and calls `http://localhost:8000/api`. Set `VITE_API_BASE_URL` to point at another API origin. In production, set `ENV=production` for the backend to disable interactive API documentation and configure `ALLOWED_ORIGINS` explicitly.
+The development dashboard defaults to `http://localhost:5173` and calls the Render API origin `https://mitochron.onrender.com`. Set `VITE_API_URL` to point at another API origin (for local development, use `http://localhost:8000`). In production, set `ENV=production` for the backend to disable interactive API documentation and configure `ALLOWED_ORIGINS` explicitly. The API root `GET /` is also used for Render wake-up checks.
 
 ## Example workflow
 

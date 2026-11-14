@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-The dashboard expects the API at `http://localhost:8000/api`. Start the backend first:
+The dashboard uses `VITE_API_URL` and defaults to `https://mitochron.onrender.com` (set it to `http://localhost:8000` for local development). Start the backend first:
 
 ```bash
 cd /home/ubuntu

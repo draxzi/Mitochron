@@ -19,7 +19,7 @@ export default function IngestionPanel({ onAnalyze, loading, error }) {
     event.preventDefault()
     if (files.length) onAnalyze({ type: 'upload', files, region_label: region === 'Global' ? 'Unknown' : region })
   }
-  const acceptFiles = (selected) => setFiles(Array.from(selected).filter((file) => /\.(fasta|fa|seq)$/i.test(file.name)))
+  const acceptFiles = (selected) => setFiles(Array.from(selected).filter((file) => /\.(fasta|fa|seq|txt)$/i.test(file.name)))
 
   return <section className="panel ingest-panel">
     <div className="panel-heading">
@@ -37,7 +37,7 @@ export default function IngestionPanel({ onAnalyze, loading, error }) {
       <button className="primary-button submit-button" disabled={loading || !query.trim()}>{loading ? <LoaderCircle className="spin" size={17} /> : <Search size={17} />} {loading ? 'Analyzing cohort...' : 'Fetch from NCBI'}</button>
     </form> : <form onSubmit={submitUpload} className="upload-form">
       <div className="dropzone" onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); acceptFiles(e.dataTransfer.files) }}>
-        <UploadCloud size={28} /><strong>Drop FASTA files here</strong><span>.fasta, .fa, or .seq · single or multi-record</span><input ref={inputRef} hidden type="file" multiple accept=".fasta,.fa,.seq" onChange={(e) => acceptFiles(e.target.files)} />
+        <UploadCloud size={28} /><strong>Drop FASTA files here</strong><span>.fasta, .fa, .seq, or .txt · single or multi-record</span><input ref={inputRef} hidden type="file" multiple accept=".fasta,.fa,.seq,.txt" onChange={(e) => acceptFiles(e.target.files)} />
       </div>
       <div className="upload-actions"><div><span className="muted">{files.length ? `${files.length} file${files.length > 1 ? 's' : ''} selected` : 'No files selected'}</span>{files.map((file) => <div className="file-pill" key={file.name}>{file.name}</div>)}</div><div className="upload-controls"><label className="field"><span>Region tag</span><select value={region} onChange={(e) => setRegion(e.target.value)}>{regions.map((item) => <option key={item}>{item}</option>)}</select></label><button className="primary-button" disabled={loading || !files.length}>{loading ? <LoaderCircle className="spin" size={17} /> : <FileUp size={17} />} Upload & analyze</button></div></div>
     </form>}
