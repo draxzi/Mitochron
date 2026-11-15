@@ -11,7 +11,9 @@ import LegalModal from './LegalModal'
 export const API = (import.meta.env.VITE_API_URL || 'https://mitochron.onrender.com').replace(/\/+$/, '')
 const SESSION_KEY = 'mtdna.session.result'
 const REQUEST_TIMEOUT = 60000
-const AWAKENING_TIMEOUT = 40000
+const AWAKENING_ATTEMPT_TIMEOUT = 12000
+const AWAKENING_WINDOW = 60000
+const AWAKENING_RETRY_DELAY = 6000
 
 async function requestWithTimeout(url, options = {}, timeout = REQUEST_TIMEOUT) {
   const controller = new AbortController()
@@ -24,6 +26,13 @@ function readableError(error, action = 'The request') {
   if (error?.message === 'Failed to fetch') return `${action} could not reach the analysis service after its wake-up attempt.`
   return error?.message || `${action} failed. Please retry.`
 }
+
+function isTransientAwakeningFailure(errorOrResponse) {
+  if (errorOrResponse instanceof Response) return [502, 503, 504].includes(errorOrResponse.status)
+  return errorOrResponse?.name === 'AbortError' || errorOrResponse?.name === 'TypeError' || errorOrResponse?.message === 'Failed to fetch'
+}
+
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
 export default function App() {
   const [result, setResult] = useState(() => { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') } catch { return null } })
@@ -55,20 +64,36 @@ export default function App() {
     if (isAwakening) lastAwakeningRequest.current = request
     setLoading(true); setError(''); setAwakeningFailure(''); setAwakening(isAwakening); setAwakeningRetrying(false); setBackend('checking'); setLoadingStatus(request.type === 'ncbi' ? 'Fetching records from NCBI…' : isAwakening ? 'Initiating secure link…' : 'Uploading FASTA evidence…')
     const upload = (timeout) => { const form = new FormData(); request.files.forEach((file) => form.append('files', file)); form.append('region_label', request.region_label); return requestWithTimeout(`${API}/api/analyze/upload`, { method: 'POST', body: form }, timeout) }
+    const uploadThroughAwakening = async () => {
+      const startedAt = Date.now()
+      let attempt = 0
+      while (Date.now() - startedAt < AWAKENING_WINDOW) {
+        attempt += 1
+        const elapsed = Math.round((Date.now() - startedAt) / 1000)
+        setAwakeningRetrying(attempt > 1)
+        setLoadingStatus(attempt === 1 ? 'Initiating secure link…' : `Reconnecting to Render… attempt ${attempt}`)
+        try {
+          const response = await upload(AWAKENING_ATTEMPT_TIMEOUT)
+          if (!isTransientAwakeningFailure(response)) return response
+          const remaining = Math.max(0, AWAKENING_WINDOW - (Date.now() - startedAt))
+          if (remaining <= 0) return response
+          setAwakeningRetrying(true)
+          setLoadingStatus(`Render is waking up… retrying in ${AWAKENING_RETRY_DELAY / 1000}s (${elapsed}s / ${AWAKENING_WINDOW / 1000}s)`)
+          await wait(Math.min(AWAKENING_RETRY_DELAY, remaining))
+        } catch (attemptError) {
+          const remaining = Math.max(0, AWAKENING_WINDOW - (Date.now() - startedAt))
+          if (!isTransientAwakeningFailure(attemptError) || remaining <= 0) throw attemptError
+          setAwakeningRetrying(true)
+          setLoadingStatus(`Connection paused by cold start… retrying in ${AWAKENING_RETRY_DELAY / 1000}s (${elapsed}s / ${AWAKENING_WINDOW / 1000}s)`)
+          await wait(Math.min(AWAKENING_RETRY_DELAY, remaining))
+        }
+      }
+      throw new Error('The Render analysis service did not wake within 60 seconds. Your FASTA batch is preserved; please retry.')
+    }
     try {
       let response
       if (request.type === 'ncbi') response = await requestWithTimeout(`${API}/api/analyze/ncbi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: request.query, max_samples: request.max_samples, region_label: request.region_label }) })
-      else {
-        try { response = await upload(isAwakening ? AWAKENING_TIMEOUT : REQUEST_TIMEOUT) } catch (firstError) {
-          if (!isAwakening) throw firstError
-          setAwakeningRetrying(true); setLoadingStatus('Server container is awake; preparing a seamless retry…')
-          response = await upload(AWAKENING_TIMEOUT)
-        }
-        if (!response.ok && isAwakening && response.status >= 500) {
-          setAwakeningRetrying(true); setLoadingStatus('Server container is awake; preparing a seamless retry…')
-          response = await upload(AWAKENING_TIMEOUT)
-        }
-      }
+      else response = isAwakening ? await uploadThroughAwakening() : await upload(REQUEST_TIMEOUT)
       setLoadingStatus('Aligning sequences and building the forensic report…')
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.detail || 'The analysis service returned an error.')
